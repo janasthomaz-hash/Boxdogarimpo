@@ -49,7 +49,7 @@ export function transitionOfferStatus(
         item,
       };
     }
-    if (item.currentPrice <= 0) {
+    if (!Number.isFinite(item.currentPrice) || item.currentPrice <= 0) {
       return {
         success: false,
         fromStatus,
@@ -58,7 +58,11 @@ export function transitionOfferStatus(
         item,
       };
     }
-    if (item.discountPercent < context.systemConfig.minDiscountPercent) {
+    if (
+      !Number.isFinite(item.discountPercent) || item.discountPercent < 0 || item.discountPercent > 100 ||
+      !Number.isFinite(context.systemConfig.minDiscountPercent) ||
+      item.discountPercent < context.systemConfig.minDiscountPercent
+    ) {
       return {
         success: false,
         fromStatus,
