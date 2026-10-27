@@ -1,4 +1,5 @@
 import { OfferItem, OfferStatus, ChannelConfig, SystemConfig } from './types';
+import { validateAffiliateUrl } from './validation';
 
 export interface StateTransitionResult {
   success: boolean;
@@ -91,7 +92,12 @@ export function transitionOfferStatus(
         item,
       };
     }
-    if (!item.isAffiliateValid || !item.affiliateUrl) {
+    if (
+      !item.isAffiliateValid ||
+      item.affiliateVerificationStatus !== 'VERIFIED' ||
+      !item.affiliateOfficialUrl ||
+      !validateAffiliateUrl(item.affiliateUrl, context.systemConfig.affiliateTag, item.affiliateOfficialUrl)
+    ) {
       return {
         success: false,
         fromStatus,
