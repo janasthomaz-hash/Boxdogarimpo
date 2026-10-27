@@ -159,5 +159,9 @@ function isValidMarketplaceProductUrl(value: string): boolean {
 
 function isAllowedMarketplaceHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return host === 'mercadolivre.com.br' || host === 'mercadolivre.com';
+  // Exact allowlist: include canonical www hosts, but reject arbitrary subdomains.
+  return host === 'mercadolivre.com.br' ||
+    host === 'www.mercadolivre.com.br' ||
+    host === 'mercadolivre.com' ||
+    host === 'www.mercadolivre.com';
 }
