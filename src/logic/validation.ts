@@ -94,7 +94,7 @@ export function generateAuthorizedAffiliateUrl(
 ): { affiliateUrl: string; isValid: boolean; trackingMethod: string } {
   const productId = typeof mlbId === 'string' ? mlbId.trim() : '';
   const tag = typeof affiliateTag === 'string' ? affiliateTag.trim() : '';
-  if (!isValidMarketplaceProductUrl(permalink) || !/^MLB\\d+$/i.test(productId) || !tag) {
+  if (!isValidMarketplaceProductUrl(permalink) || !/^MLB\d+$/i.test(productId) || !tag) {
     return { affiliateUrl: '', isValid: false, trackingMethod: 'INVALID_INPUT' };
   }
 
