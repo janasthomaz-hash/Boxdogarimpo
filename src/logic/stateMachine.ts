@@ -130,6 +130,20 @@ export function transitionOfferStatus(
         item,
       };
     }
+    if (
+      !item.isAffiliateValid ||
+      item.affiliateVerificationStatus !== 'VERIFIED' ||
+      !item.affiliateOfficialUrl ||
+      !validateAffiliateUrl(item.affiliateUrl, context.systemConfig.affiliateTag, item.affiliateOfficialUrl)
+    ) {
+      return {
+        success: false,
+        fromStatus,
+        toStatus,
+        message: 'BLOQUEIO DE SEGURANÇA: afiliado não foi comprovado por URL oficial independente.',
+        item,
+      };
+    }
 
     return {
       success: true,
