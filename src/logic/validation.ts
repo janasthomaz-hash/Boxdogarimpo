@@ -48,7 +48,12 @@ export function calculateOpportunityScore(item: {
   freeShipping: boolean;
   stockAvailable: boolean;
 }): number {
-  if (!item.stockAvailable || !Number.isFinite(item.currentPrice) || item.currentPrice <= 0 || !Number.isFinite(item.discountPercent)) {
+  if (
+    !item.stockAvailable ||
+    !Number.isFinite(item.currentPrice) || item.currentPrice <= 0 ||
+    !Number.isFinite(item.originalPrice) || item.originalPrice < 0 ||
+    !Number.isFinite(item.discountPercent) || item.discountPercent < 0 || item.discountPercent > 100
+  ) {
     return 0;
   }
 
@@ -154,8 +159,5 @@ function isValidMarketplaceProductUrl(value: string): boolean {
 
 function isAllowedMarketplaceHost(hostname: string): boolean {
   const host = hostname.toLowerCase();
-  return host === 'mercadolivre.com.br' ||
-    host.endsWith('.mercadolivre.com.br') ||
-    host === 'mercadolivre.com' ||
-    host.endsWith('.mercadolivre.com');
+  return host === 'mercadolivre.com.br' || host === 'mercadolivre.com';
 }
