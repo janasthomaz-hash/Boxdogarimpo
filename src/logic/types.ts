@@ -28,6 +28,9 @@ export interface OfferItem {
   permalink: string;
   affiliateUrl: string;
   isAffiliateValid: boolean;
+  /** Must be populated only from a successful official affiliate-platform response. */
+  affiliateVerificationStatus?: 'UNVERIFIED' | 'VERIFIED';
+  affiliateOfficialUrl?: string;
   stockAvailable: boolean;
   sellerName: string;
   sellerReputation: 'MercadoLider Platinum' | 'MercadoLider Gold' | 'MercadoLider' | 'Normal';

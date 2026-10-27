@@ -1,27 +1,28 @@
-name: Makefile CI
+name: Garimpo CI
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "fix/**" ]
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
+    timeout-minutes: 15
     steps:
-    - uses: actions/checkout@v4
-
-    - name: configure
-      run: ./configure
-
-    - name: Install dependencies
-      run: make
-
-    - name: Run check
-      run: make check
-
-    - name: Run distcheck
-      run: make distcheck
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: TypeScript check
+        run: npm run lint
+      - name: Production build
+        run: npm run build

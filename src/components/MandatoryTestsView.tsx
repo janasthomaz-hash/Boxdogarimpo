@@ -55,7 +55,7 @@ export const MandatoryTestsView: React.FC<MandatoryTestsViewProps> = ({
     onUpdateTests(final);
     onShowNotification(
       `Teste #${testId} (${tests.find((t) => t.id === testId)?.name}): ${res.status}`,
-      res.status === 'PASSED' ? 'success' : 'error'
+      res.status === 'PASSED' ? 'success' : res.status === 'PENDING' ? 'info' : 'error'
     );
   };
 
@@ -87,7 +87,13 @@ export const MandatoryTestsView: React.FC<MandatoryTestsViewProps> = ({
     }
 
     setIsRunningAll(false);
-    onShowNotification('Bateria dos 10 Testes Obrigatórios finalizada!', 'success');
+    const finalPassedCount = currentTests.filter((test) => test.status === 'PASSED').length;
+    const finalPendingCount = currentTests.filter((test) => test.status === 'PENDING').length;
+    const finalFailedCount = currentTests.filter((test) => test.status === 'FAILED').length;
+    onShowNotification(
+      `Bateria concluída: ${finalPassedCount} aprovados, ${finalFailedCount} reprovados e ${finalPendingCount} pendentes. Não equivale a homologação automática.`,
+      finalFailedCount > 0 ? 'error' : finalPendingCount > 0 ? 'info' : 'success'
+    );
   };
 
   const handleDownloadReport = () => {

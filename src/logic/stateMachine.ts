@@ -1,4 +1,5 @@
 import { OfferItem, OfferStatus, ChannelConfig, SystemConfig } from './types';
+import { validateAffiliateUrl } from './validation';
 
 export interface StateTransitionResult {
   success: boolean;
@@ -91,7 +92,12 @@ export function transitionOfferStatus(
         item,
       };
     }
-    if (!item.isAffiliateValid || !item.affiliateUrl) {
+    if (
+      !item.isAffiliateValid ||
+      item.affiliateVerificationStatus !== 'VERIFIED' ||
+      !item.affiliateOfficialUrl ||
+      !validateAffiliateUrl(item.affiliateUrl, context.systemConfig.affiliateTag, item.affiliateOfficialUrl)
+    ) {
       return {
         success: false,
         fromStatus,
@@ -121,6 +127,20 @@ export function transitionOfferStatus(
         fromStatus,
         toStatus,
         message: 'Falha: Link de afiliado precisa estar confirmado antes de aprovação final.',
+        item,
+      };
+    }
+    if (
+      !item.isAffiliateValid ||
+      item.affiliateVerificationStatus !== 'VERIFIED' ||
+      !item.affiliateOfficialUrl ||
+      !validateAffiliateUrl(item.affiliateUrl, context.systemConfig.affiliateTag, item.affiliateOfficialUrl)
+    ) {
+      return {
+        success: false,
+        fromStatus,
+        toStatus,
+        message: 'BLOQUEIO DE SEGURANÇA: afiliado não foi comprovado por URL oficial independente.',
         item,
       };
     }
@@ -162,8 +182,33 @@ export function transitionOfferStatus(
       };
     }
 
+    // Final fail-closed gate: never publish a raw or unverified affiliate URL.
+    if (
+      !item.stockAvailable ||
+      !Number.isFinite(item.currentPrice) ||
+      item.currentPrice <= 0 ||
+      !item.isAffiliateValid ||
+      item.affiliateVerificationStatus !== 'VERIFIED' ||
+      !item.affiliateOfficialUrl ||
+      !validateAffiliateUrl(item.affiliateUrl, context.systemConfig.affiliateTag, item.affiliateOfficialUrl)
+    ) {
+      return {
+        success: false,
+        fromStatus,
+        toStatus,
+        message: 'BLOQUEIO DE SEGURANÇA: preço/estoque ou rastreamento oficial não comprovado. Publicação recusada.',
+        item,
+      };
+    }
+
     const authorizedChannels = (context.channels || []).filter(
-      (ch) => ch.isPublishAuthorized && (ch.status === 'ATIVO' || ch.status === 'HOMOLOGADO_TESTE')
+      (ch) =>
+        ch.isPublishAuthorized &&
+        ch.status === 'ATIVO' &&
+        ch.lastTestStatus === 'SUCCESS' &&
+        Boolean(ch.lastTestAt) &&
+        Date.now() - new Date(ch.lastTestAt as string).getTime() >= 0 &&
+        Date.now() - new Date(ch.lastTestAt as string).getTime() <= 24 * 60 * 60 * 1000
     );
 
     if (authorizedChannels.length === 0) {

@@ -18,7 +18,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { OfferItem, OfferStatus, SystemConfig, ChannelConfig } from '../logic/types';
-import { generateAuthorizedAffiliateUrl, validateAffiliateUrl } from '../logic/validation';
+import { generateAuthorizedAffiliateUrl } from '../logic/validation';
 import { transitionOfferStatus } from '../logic/stateMachine';
 
 interface ApprovalQueueViewProps {
@@ -92,24 +92,21 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
   const handleGenerateAffiliate = (item: OfferItem) => {
     const gen = generateAuthorizedAffiliateUrl(item.permalink, item.mlbId, config.affiliateTag);
-    const updatedWithLink: OfferItem = {
+    // The official affiliate-platform adapter is not implemented. Never store or approve a fabricated URL.
+    onUpdateOffer({
       ...item,
-      affiliateUrl: gen.affiliateUrl,
-      isAffiliateValid: gen.isValid,
-    };
-
-    const res = transitionOfferStatus(updatedWithLink, 'AFILIADO_CONFIRMADO', {
-      systemConfig: config,
+      affiliateUrl: '',
+      isAffiliateValid: false,
+      affiliateVerificationStatus: 'UNVERIFIED',
+      affiliateOfficialUrl: undefined,
+      status: 'PRODUTO_VALIDADO',
     });
-    if (res.success) {
-      onUpdateOffer(res.item);
-      onShowNotification(
-        `Link de afiliado gerado via método autorizado e rastreamento validado com tag ${config.affiliateTag}!`,
-        'success'
-      );
-    } else {
-      onShowNotification(res.message, 'error');
-    }
+    onShowNotification(
+      gen.isValid && gen.affiliateUrl
+        ? 'URL retornada; ainda é necessária validação independente da resposta oficial antes de aprovar.'
+        : 'Link não gerado: a integração oficial de afiliados não está implementada. A oferta continua bloqueada.',
+      'info'
+    );
   };
 
   const handleApproveForPublication = (item: OfferItem) => {
@@ -125,21 +122,12 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
     }
   };
 
-  const handlePublishNow = (item: OfferItem) => {
-    const res = transitionOfferStatus(item, 'PUBLICADO', {
-      systemConfig: config,
-      channels,
-    });
-
-    if (res.success) {
-      onUpdateOffer(res.item);
-      onShowNotification(
-        `Oferta ${item.mlbId} disparada com sucesso para os canais autorizados!`,
-        'success'
-      );
-    } else {
-      onShowNotification(res.message, 'error');
-    }
+  const handlePublishNow = (_item: OfferItem) => {
+    // This UI has no real delivery adapter. A state transition is not proof of external delivery.
+    onShowNotification(
+      'Publicação externa bloqueada: o adaptador de envio e a confirmação de entrega ainda não estão implementados.',
+      'info'
+    );
   };
 
   const handleRejectOffer = (item: OfferItem) => {
@@ -472,11 +460,13 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
                     {offer.status === 'APROVADO_PUBLICACAO' && (
                       <button
-                        onClick={() => handlePublishNow(offer)}
-                        className="px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold shadow-md shadow-sky-500/20 flex items-center gap-1.5 transition-all"
+                        type="button"
+                        disabled
+                        title="Envio externo ainda não integrado"
+                        className="px-3.5 py-1.5 rounded-lg bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5 opacity-60 cursor-not-allowed"
                       >
                         <Send className="w-3.5 h-3.5" />
-                        <span>Disparar nos Canais</span>
+                        <span>Envio não integrado</span>
                       </button>
                     )}
 

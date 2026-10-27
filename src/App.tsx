@@ -136,7 +136,7 @@ export default function App() {
       timestamp: new Date().toISOString(),
       stage: 'CONFIG',
       level: 'INFO',
-      message: `Ciclo iniciado com periodicidade de ${config.frequencyMinutes} min e limite de ${config.requestRateLimitPerCycle} reqs.`,
+      message: `SIMULAÇÃO LOCAL (sem API externa): configuração ${config.frequencyMinutes} min; limite configurado ${config.requestRateLimitPerCycle} reqs.`,
     };
 
     // 2. Coleta: Discover new deal in active category
@@ -183,7 +183,7 @@ export default function App() {
         'https://images.unsplash.com/photo-1546868871-7041f2a55e12?w=400&auto=format&fit=crop&q=80',
       opportunityScore: oppScore,
       stableHash: generateStableHash(mlbId, `${chosenCat.name} Smart Garimpo Pro`, 'Mercado Livre Oficial'),
-      status: 'AFILIADO_CONFIRMADO',
+      status: 'PRODUTO_ENCONTRADO',
       discoveredAt: new Date().toISOString(),
       validatedAt: new Date().toISOString(),
       history: [
@@ -192,8 +192,8 @@ export default function App() {
           price: currentPrice,
           originalPrice,
           discountPercent: disc.discountPercent,
-          source: `MLB API (${chosenCat.id})`,
-          notes: 'Coletado no ciclo de 15 minutos',
+          source: 'SIMULAÇÃO LOCAL — nenhuma API foi consultada',
+          notes: 'Dados fictícios de demonstração; não usar como oferta real',
         },
       ],
     };
@@ -208,8 +208,8 @@ export default function App() {
       id: `LOG_${Date.now()}_2`,
       timestamp: new Date().toISOString(),
       stage: 'COLETA',
-      level: 'SUCCESS',
-      message: `Consulta realizada para ${chosenCat.name} (${chosenCat.id}): 1 nova oportunidade identificada.`,
+      level: 'INFO',
+      message: `SIMULAÇÃO: categoria ${chosenCat.name} (${chosenCat.id}); nenhuma consulta real foi feita.`,
     };
 
     const log3: PipelineExecutionLog = {
@@ -224,8 +224,8 @@ export default function App() {
       id: `LOG_${Date.now()}_4`,
       timestamp: new Date().toISOString(),
       stage: 'APROVACAO',
-      level: 'SUCCESS',
-      message: `Oferta ${mlbId} retida com segurança na Fila de Aprovação (Estado: AFILIADO_CONFIRMADO).`,
+      level: 'WARN',
+      message: `Demonstração fictícia ${mlbId} mantida como PRODUTO_ENCONTRADO; afiliado e preço real não foram verificados.`,
     };
 
     setOffers((prev) => [newCandidate, ...prev]);
@@ -233,8 +233,8 @@ export default function App() {
     setIsRunningCycle(false);
 
     showNotification(
-      `Ciclo de 15 minutos concluído! Oferta ${mlbId} inserida na Fila de Aprovação.`,
-      'success'
+      `Simulação local concluída. Nenhuma API foi consultada e nenhuma oferta real foi validada.`,
+      'info'
     );
   };
 

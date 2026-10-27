@@ -2,36 +2,36 @@ import { MandatoryTestItem, SystemConfig, OfferItem, ChannelConfig } from './typ
 import { generateStableHash } from './hash';
 import { calculateDiscount, generateAuthorizedAffiliateUrl, validateAffiliateUrl } from './validation';
 import { evaluateDeduplication, recordPriceHistory } from './deduplication';
-import { generateIdempotentSheetCreationPayload, SHEET_TAB_DEFINITIONS } from './sheetSchema';
+import { generateIdempotentSheetCreationPayload } from './sheetSchema';
 import { transitionOfferStatus } from './stateMachine';
 
 export const INITIAL_MANDATORY_TESTS: MandatoryTestItem[] = [
   {
     id: 1,
     name: 'Conexão com a Fonte',
-    description: 'Valida conexão HTTP com Mercado Livre e diferencia autorização de endpoints.',
-    expectedResult: 'Resposta válida, sem erro de autorização ou falha silenciosa.',
+    description: 'Faz uma requisição HTTP real ao endpoint de metadados MLB; não representa teste do endpoint de busca.',
+    expectedResult: 'HTTP 200 e payload MLB válido; endpoints de busca precisam de teste separado.',
     status: 'PENDING',
   },
   {
     id: 2,
     name: 'Cobertura de Categorias',
-    description: 'Verifica expansão para todas as categorias elegíveis além da busca fixa celular.',
-    expectedResult: 'Múltiplas categorias elegíveis mapeadas e testadas com queries dinâmicas.',
+    description: 'Confere configuração de categorias; consulta real por categoria permanece pendente até testar a integração.',
+    expectedResult: 'Categorias ativas configuradas e consulta real comprovada para cada categoria.',
     status: 'PENDING',
   },
   {
     id: 3,
-    name: 'Preço e Disponibilidade',
-    description: 'Confere integridade de preço, moeda BRL, estoque ativo e reputação do vendedor.',
-    expectedResult: 'Dados válidos conferidos, cálculo de desconto real e detecção de ofertas falsas.',
+    name: 'Validação unitária de preço e desconto',
+    description: 'Testa somente a função local de cálculo; preço, moeda, estoque e vendedor reais exigem dados da API.',
+    expectedResult: 'Cálculos unitários corretos; validação comercial externa não é inferida por este teste.',
     status: 'PENDING',
   },
   {
     id: 4,
-    name: 'Link de Afiliado e Rastreamento',
-    description: 'Gera link via método autorizado e comprova parâmetros de monetização.',
-    expectedResult: 'Link rastreável gerado com tag autorizada; URLs brutas bloqueadas.',
+    name: 'Bloqueio seguro de link não verificado',
+    description: 'Confirma que o sistema não inventa URL rastreável quando a integração oficial não existe.',
+    expectedResult: 'Sem URL fabricada; publicação bloqueada até integração e confirmação oficiais.',
     status: 'PENDING',
   },
   {
@@ -58,22 +58,22 @@ export const INITIAL_MANDATORY_TESTS: MandatoryTestItem[] = [
   {
     id: 8,
     name: 'Canal de Destino (WhatsApp & Telegram)',
-    description: 'Testa permissões e disparo de mensagem controlada para boxdogarimpo e @boxdogarimpo.',
-    expectedResult: 'Mensagem formatada homologada com trava de segurança respeitada.',
+    description: 'Verifica se há evidência de entrega externa; não envia mensagem automaticamente.',
+    expectedResult: 'Entrega confirmada por resposta real do provedor; caso contrário, status PENDING.',
     status: 'PENDING',
   },
   {
     id: 9,
     name: 'Erros e Limites de Requisição',
     description: 'Testa rate limiting, consumo de créditos e política de retry com backoff.',
-    expectedResult: 'Teto de requisições por ciclo respeitado, prevenindo loop no Make.',
+    expectedResult: 'Rate limit, retry/backoff e resposta HTTP 429 exercitados em integração real.',
     status: 'PENDING',
   },
   {
     id: 10,
     name: 'Execução Recorrente (15 Minutos)',
     description: 'Configura periodicidade definitiva de 15 minutos com trava anti-sobreposição.',
-    expectedResult: 'Agendamento de 15 minutos validado com lock de concorrência ativo.',
+    expectedResult: 'Agendamento e lock conferidos no cenário real do Make; configuração local não é evidência.',
     status: 'PENDING',
   },
 ];
@@ -86,20 +86,31 @@ export async function runSingleMandatoryTest(
   config: SystemConfig,
   sampleOffers: OfferItem[],
   sampleChannels: ChannelConfig[]
-): Promise<{ status: 'PASSED' | 'FAILED'; details: string }> {
+): Promise<{ status: 'PASSED' | 'FAILED' | 'PENDING'; details: string }> {
   try {
     switch (testId) {
       case 1: {
-        // Conexão com a fonte
-        // Simula ou executa ping com timeout e valida status 200
-        const isEndpointValid = true;
-        if (isEndpointValid) {
-          return {
-            status: 'PASSED',
-            details: 'Conexão HTTP validada com API pública do Mercado Livre (MLB). Status 200 OK. Cabeçalhos de rate-limit inspecionados.',
-          };
+        // Teste HTTP real com timeout; não simula status nem disponibilidade.
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 8000);
+        try {
+          const response = await fetch('https://api.mercadolibre.com/sites/MLB', {
+            method: 'GET',
+            headers: { Accept: 'application/json' },
+            signal: controller.signal,
+            cache: 'no-store',
+          });
+          if (!response.ok) {
+            return { status: 'FAILED', details: `API Mercado Livre respondeu HTTP ${response.status}; conectividade não homologada.` };
+          }
+          const payload: unknown = await response.json();
+          if (!payload || typeof payload !== 'object' || !('id' in payload) || (payload as { id?: unknown }).id !== 'MLB') {
+            return { status: 'FAILED', details: 'Resposta HTTP recebida, mas o corpo não corresponde ao site MLB esperado.' };
+          }
+          return { status: 'PASSED', details: 'Requisição HTTP real concluída: HTTP 200 e payload MLB validado. Este teste não comprova acesso aos endpoints de busca de produtos.' };
+        } finally {
+          clearTimeout(timeout);
         }
-        return { status: 'FAILED', details: 'Erro ao conectar à API do Mercado Livre.' };
       }
 
       case 2: {
@@ -112,8 +123,8 @@ export async function runSingleMandatoryTest(
           };
         }
         return {
-          status: 'PASSED',
-          details: `Cobertura validada: ${enabledCategories.length} categorias ativas (${enabledCategories.map((c) => c.name).join(', ')}). Busca dinâmica operacional.`,
+          status: 'PENDING',
+          details: `${enabledCategories.length} categorias habilitadas na configuração (${enabledCategories.map((c) => c.name).join(', ')}). Isso não comprova que as consultas reais por categoria estão implementadas ou acessíveis; validar integração de coleta.`,
         };
       }
 
@@ -131,22 +142,29 @@ export async function runSingleMandatoryTest(
       }
 
       case 4: {
-        // Link de afiliado e rastreamento
+        // Testa que o sistema NÃO inventa links rastreáveis quando a integração oficial falta.
         const generated = generateAuthorizedAffiliateUrl(
           'https://www.mercadolivre.com.br/apple-iphone-15-128-gb-preto/p/MLB28501234',
           'MLB28501234',
           config.affiliateTag
         );
-        const isValid = validateAffiliateUrl(generated.affiliateUrl, config.affiliateTag);
-        const isRawInvalid = validateAffiliateUrl('https://mercadolivre.com.br/produto-teste');
-
-        if (generated.isValid && isValid && !isRawInvalid) {
-          return {
-            status: 'PASSED',
-            details: `Link de afiliado gerado via método autorizado: ${generated.trackingMethod}. Tag ${config.affiliateTag} e parâmetros matt_tool verificados. URLs brutas rejeitadas.`,
-          };
+        const rawUrlAccepted = validateAffiliateUrl('https://www.mercadolivre.com.br/apple-iphone-15-128-gb-preto/p/MLB28501234', config.affiliateTag);
+        const fabricatedUrlAccepted = validateAffiliateUrl(
+          'https://www.mercadolivre.com.br/sec/teste?matt_word=boxdogarimpo',
+          config.affiliateTag
+        );
+        const sample = sampleOffers[0];
+        const transition = sample
+          ? transitionOfferStatus(
+              { ...sample, status: 'PRODUTO_VALIDADO', affiliateUrl: '', isAffiliateValid: false, affiliateVerificationStatus: 'UNVERIFIED' },
+              'AFILIADO_CONFIRMADO',
+              { systemConfig: config }
+            )
+          : null;
+        if (!generated.isValid && !generated.affiliateUrl && !rawUrlAccepted && !fabricatedUrlAccepted && transition && !transition.success) {
+          return { status: 'PASSED', details: 'Fail-closed aprovado: não fabrica nem aceita URL sem prova oficial e a máquina de estados bloqueia a transição para AFILIADO_CONFIRMADO. Integração oficial ainda pendente.' };
         }
-        return { status: 'FAILED', details: 'Link de afiliado gerado não possui rastreamento válido.' };
+        return { status: 'FAILED', details: 'Falha crítica: URL não comprovada aceita ou transição para afiliado confirmada liberada.' };
       }
 
       case 5: {
@@ -157,6 +175,7 @@ export async function runSingleMandatoryTest(
           return { status: 'FAILED', details: 'Hash não normalizado: produziu hashes diferentes para mesmo item.' };
         }
 
+        if (!sampleOffers[0]) return { status: 'FAILED', details: 'Não há oferta de amostra para executar o teste de deduplicação.' };
         const dummyItem: OfferItem = {
           ...sampleOffers[0],
           stableHash: hash1,
@@ -183,7 +202,8 @@ export async function runSingleMandatoryTest(
       case 6: {
         // Histórico
         const baseItem = sampleOffers[0];
-        const updated = recordPriceHistory(baseItem, 1899, 2999, 'Mercado Livre API Ciclo 12');
+        if (!baseItem) return { status: 'FAILED', details: 'Não há oferta de amostra para testar o histórico de preços.' };
+        const updated = recordPriceHistory(baseItem, 1899, 2999, 'Teste unitário local');
         if (updated.history.length > (baseItem.history?.length || 0)) {
           return {
             status: 'PASSED',
@@ -210,42 +230,33 @@ export async function runSingleMandatoryTest(
       }
 
       case 8: {
-        // Canais de destino
-        const telegram = sampleChannels.find(
-          (c) => c.type === 'telegram' && (c.targetId.includes('4290067522') || c.targetId.includes('boxdogarimpo'))
+        // A configuração local não prova que uma mensagem foi entregue.
+        const authorized = sampleChannels.filter((channel) =>
+          channel.isPublishAuthorized &&
+          (channel.status === 'ATIVO' || channel.status === 'HOMOLOGADO_TESTE') &&
+          channel.lastTestStatus === 'SUCCESS' &&
+          Boolean(channel.lastTestAt)
         );
-        const whatsapp = sampleChannels.find(
-          (c) => c.type === 'whatsapp' && (c.targetId.includes('FPlfvOSisEIDPXXQbyLrsG') || c.targetId.includes('boxdogarimpo'))
-        );
-        if (telegram && whatsapp) {
-          return {
-            status: 'PASSED',
-            details: `Canais oficiais vinculados: Telegram (${telegram.targetId}), Bot de Captação (@boxdogarimpo_bot) e Grupo WhatsApp (${whatsapp.targetId}). Homologados e prontos para operação.`,
-          };
+        if (authorized.length === 0) {
+          return { status: 'PENDING', details: 'Nenhum canal tem evidência recente de teste de entrega. Não foi enviada mensagem de teste; não marcar canal como homologado.' };
         }
-        return { status: 'FAILED', details: 'Canais oficiais não encontrados nas definições.' };
+        return { status: 'PENDING', details: `${authorized.length} canal(is) têm metadados de teste, mas a entrega precisa ser confirmada por resposta real da API do provedor antes da homologação.` };
       }
 
       case 9: {
-        // Erros e limites
-        if (config.requestRateLimitPerCycle > 0 && config.requestRateLimitPerCycle <= 50) {
-          return {
-            status: 'PASSED',
-            details: `Limite de segurança fixado em ${config.requestRateLimitPerCycle} requisições/ciclo. Evita exaustão de créditos no Make e bloqueios 429 de IP pelo Mercado Livre.`,
-          };
+        // Validar um número de configuração não testa rate-limit nem retry em execução.
+        if (!Number.isInteger(config.requestRateLimitPerCycle) || config.requestRateLimitPerCycle < 1 || config.requestRateLimitPerCycle > 50) {
+          return { status: 'FAILED', details: 'Limite configurado inválido; esperado inteiro entre 1 e 50 por ciclo.' };
         }
-        return { status: 'FAILED', details: 'Limite de requisições desconfigurado ou perigoso.' };
+        return { status: 'PENDING', details: `Configuração dentro do intervalo (${config.requestRateLimitPerCycle}), mas rate-limit, backoff e tratamento HTTP 429 não foram exercitados por teste de integração.` };
       }
 
       case 10: {
-        // Execução recorrente (15 min)
-        if (config.frequencyMinutes === 15) {
-          return {
-            status: 'PASSED',
-            details: `Periodicidade restaurada para 15 minutos (requisito original homologado). Substitui a data temporária de 2030 do Make assim que validado.`,
-          };
+        // A configuração local não consulta o cenário nem os triggers reais do Make.
+        if (!Number.isInteger(config.frequencyMinutes) || config.frequencyMinutes < 1) {
+          return { status: 'FAILED', details: 'Frequência local inválida; esperado inteiro positivo.' };
         }
-        return { status: 'FAILED', details: `Frequência atual é de ${config.frequencyMinutes} min. Requisito original é de 15 minutos.` };
+        return { status: 'PENDING', details: `Frequência configurada localmente: ${config.frequencyMinutes} min. Agendamento real e trava anti-sobreposição só podem ser homologados consultando e executando o cenário Make.` };
       }
 
       default:

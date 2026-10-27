@@ -9,12 +9,12 @@ export function calculateDiscount(currentPrice: number, originalPrice: number): 
   isFakeDiscount: boolean;
   isValidPrice: boolean;
 } {
-  if (!currentPrice || currentPrice <= 0) {
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0 || !Number.isFinite(originalPrice) || originalPrice < 0) {
     return { discountPercent: 0, savings: 0, isFakeDiscount: true, isValidPrice: false };
   }
 
   // If no original price or lower than current price, genuine discount is 0%
-  if (!originalPrice || originalPrice <= currentPrice) {
+  if (originalPrice === 0 || originalPrice <= currentPrice) {
     return {
       discountPercent: 0,
       savings: 0,
@@ -48,7 +48,12 @@ export function calculateOpportunityScore(item: {
   freeShipping: boolean;
   stockAvailable: boolean;
 }): number {
-  if (!item.stockAvailable || item.currentPrice <= 0) {
+  if (
+    !item.stockAvailable ||
+    !Number.isFinite(item.currentPrice) || item.currentPrice <= 0 ||
+    !Number.isFinite(item.originalPrice) || item.originalPrice < 0 ||
+    !Number.isFinite(item.discountPercent) || item.discountPercent < 0 || item.discountPercent > 100
+  ) {
     return 0;
   }
 
@@ -82,57 +87,77 @@ export function calculateOpportunityScore(item: {
 }
 
 /**
- * Authorized Mercado Livre Affiliate Link Generator.
- * Requirement: Raw product URLs MUST NOT be published directly.
- * Links must be generated via the authorized affiliate tracking mechanism.
+ * Fail-closed affiliate URL generation.
+ *
+ * A product permalink is not an affiliate URL. Do not fabricate tracking parameters:
+ * the official affiliate program must return the tracked URL before publication.
  */
 export function generateAuthorizedAffiliateUrl(
   permalink: string,
   mlbId: string,
   affiliateTag: string = 'boxdogarimpo-20'
 ): { affiliateUrl: string; isValid: boolean; trackingMethod: string } {
-  if (!permalink || !permalink.includes('mercadolivre.com')) {
-    return { affiliateUrl: '', isValid: false, trackingMethod: 'INVALID_URL' };
+  const productId = typeof mlbId === 'string' ? mlbId.trim() : '';
+  const tag = typeof affiliateTag === 'string' ? affiliateTag.trim() : '';
+  if (!isValidMarketplaceProductUrl(permalink) || !/^MLB\d+$/i.test(productId) || !tag) {
+    return { affiliateUrl: '', isValid: false, trackingMethod: 'INVALID_INPUT' };
   }
 
-  // Canonical Mercado Livre Affiliate Tracking standard:
-  // Authorized format includes matt_tool, matt_word, and secure affiliate shortener / tracking hash
-  const cleanUrl = permalink.split('?')[0]; // Strip raw search params
-  const trackingParams = new URLSearchParams({
-    matt_tool: 'afiliados_boxdogarimpo',
-    matt_word: affiliateTag,
-    mclics_id: mlbId || 'MLB_REF',
-    af_sub1: 'boxdogarimpo_telegram_whatsapp',
-  });
-
-  const affiliateUrl = `${cleanUrl}?${trackingParams.toString()}`;
-
+  // No official affiliate API/portal adapter is implemented in this repository yet.
+  // Deliberately return no URL rather than inventing a tracking URL.
   return {
-    affiliateUrl,
-    isValid: true,
-    trackingMethod: 'MERCADO_LIVRE_AFFILIATES_API_V2',
+    affiliateUrl: '',
+    isValid: false,
+    trackingMethod: 'UNVERIFIED_OFFICIAL_AFFILIATE_INTEGRATION',
   };
 }
 
 /**
- * Validates whether an affiliate link possesses the authorized monetization parameters.
+ * Returns true only when the candidate exactly matches an independently supplied
+ * official URL returned by the affiliate platform. Presence of query parameters
+ * or a /sec/ path is not proof of commission attribution.
  */
-export function validateAffiliateUrl(url: string, affiliateTag: string = 'boxdogarimpo'): boolean {
-  if (!url) return false;
+export function validateAffiliateUrl(
+  url: string,
+  affiliateTag: string = 'boxdogarimpo',
+  officialUrl?: string
+): boolean {
+  if (!url || !officialUrl || !affiliateTag.trim()) return false;
   try {
-    const parsed = new URL(url);
-    if (!parsed.hostname.includes('mercadolivre.com')) return false;
+    const candidate = new URL(url);
+    const official = new URL(officialUrl);
+    if (
+      candidate.protocol !== 'https:' ||
+      official.protocol !== 'https:' ||
+      !isAllowedMarketplaceHost(candidate.hostname) ||
+      !isAllowedMarketplaceHost(official.hostname) ||
+      candidate.username ||
+      candidate.password ||
+      official.username ||
+      official.password
+    ) return false;
 
-    // Checks for authorized affiliate shortlink (/sec/...) or verified tracking query params
-    const hasSecRoute = parsed.pathname.includes('/sec/');
-    const hasTrackingTag =
-      parsed.searchParams.has('matt_tool') ||
-      parsed.searchParams.has('matt_word') ||
-      parsed.searchParams.get('matt_word')?.includes(affiliateTag) ||
-      parsed.searchParams.has('af_sub1');
-
-    return hasSecRoute || Boolean(hasTrackingTag);
+    // Exact URL equality avoids accepting a raw permalink or a modified tracking URL.
+    return candidate.href === official.href && candidate.pathname.includes('/sec/');
   } catch {
     return false;
   }
+}
+
+function isValidMarketplaceProductUrl(value: string): boolean {
+  if (!value) return false;
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === 'https:' &&
+      isAllowedMarketplaceHost(parsed.hostname) &&
+      !parsed.username &&
+      !parsed.password;
+  } catch {
+    return false;
+  }
+}
+
+function isAllowedMarketplaceHost(hostname: string): boolean {
+  const host = hostname.toLowerCase();
+  return host === 'mercadolivre.com.br' || host === 'mercadolivre.com';
 }
