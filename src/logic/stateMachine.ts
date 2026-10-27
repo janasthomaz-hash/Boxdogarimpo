@@ -193,6 +193,7 @@ export function transitionOfferStatus(
         ch.status === 'ATIVO' &&
         ch.lastTestStatus === 'SUCCESS' &&
         Boolean(ch.lastTestAt) &&
+        Date.now() - new Date(ch.lastTestAt as string).getTime() >= 0 &&
         Date.now() - new Date(ch.lastTestAt as string).getTime() <= 24 * 60 * 60 * 1000
     );
 
