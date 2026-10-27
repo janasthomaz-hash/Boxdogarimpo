@@ -18,7 +18,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { OfferItem, OfferStatus, SystemConfig, ChannelConfig } from '../logic/types';
-import { generateAuthorizedAffiliateUrl, validateAffiliateUrl } from '../logic/validation';
+import { generateAuthorizedAffiliateUrl } from '../logic/validation';
 import { transitionOfferStatus } from '../logic/stateMachine';
 
 interface ApprovalQueueViewProps {
@@ -460,11 +460,13 @@ export const ApprovalQueueView: React.FC<ApprovalQueueViewProps> = ({
 
                     {offer.status === 'APROVADO_PUBLICACAO' && (
                       <button
-                        onClick={() => handlePublishNow(offer)}
-                        className="px-3.5 py-1.5 rounded-lg bg-sky-500 hover:bg-sky-400 text-slate-950 text-xs font-bold shadow-md shadow-sky-500/20 flex items-center gap-1.5 transition-all"
+                        type="button"
+                        disabled
+                        title="Envio externo ainda não integrado"
+                        className="px-3.5 py-1.5 rounded-lg bg-slate-700 text-slate-300 text-xs font-bold flex items-center gap-1.5 opacity-60 cursor-not-allowed"
                       >
                         <Send className="w-3.5 h-3.5" />
-                        <span>Disparar nos Canais</span>
+                        <span>Envio não integrado</span>
                       </button>
                     )}
 
