@@ -9,12 +9,12 @@ export function calculateDiscount(currentPrice: number, originalPrice: number): 
   isFakeDiscount: boolean;
   isValidPrice: boolean;
 } {
-  if (!currentPrice || currentPrice <= 0) {
+  if (!Number.isFinite(currentPrice) || currentPrice <= 0 || !Number.isFinite(originalPrice) || originalPrice < 0) {
     return { discountPercent: 0, savings: 0, isFakeDiscount: true, isValidPrice: false };
   }
 
   // If no original price or lower than current price, genuine discount is 0%
-  if (!originalPrice || originalPrice <= currentPrice) {
+  if (originalPrice === 0 || originalPrice <= currentPrice) {
     return {
       discountPercent: 0,
       savings: 0,
@@ -48,7 +48,7 @@ export function calculateOpportunityScore(item: {
   freeShipping: boolean;
   stockAvailable: boolean;
 }): number {
-  if (!item.stockAvailable || item.currentPrice <= 0) {
+  if (!item.stockAvailable || !Number.isFinite(item.currentPrice) || item.currentPrice <= 0 || !Number.isFinite(item.discountPercent)) {
     return 0;
   }
 
