@@ -167,6 +167,7 @@ export async function runSingleMandatoryTest(
           return { status: 'FAILED', details: 'Hash não normalizado: produziu hashes diferentes para mesmo item.' };
         }
 
+        if (!sampleOffers[0]) return { status: 'FAILED', details: 'Não há oferta de amostra para executar o teste de deduplicação.' };
         const dummyItem: OfferItem = {
           ...sampleOffers[0],
           stableHash: hash1,
@@ -193,7 +194,8 @@ export async function runSingleMandatoryTest(
       case 6: {
         // Histórico
         const baseItem = sampleOffers[0];
-        const updated = recordPriceHistory(baseItem, 1899, 2999, 'Mercado Livre API Ciclo 12');
+        if (!baseItem) return { status: 'FAILED', details: 'Não há oferta de amostra para testar o histórico de preços.' };
+        const updated = recordPriceHistory(baseItem, 1899, 2999, 'Teste unitário local');
         if (updated.history.length > (baseItem.history?.length || 0)) {
           return {
             status: 'PASSED',
