@@ -46,7 +46,7 @@ export const INITIAL_CHANNELS: ChannelConfig[] = [
     status: 'DESCONECTADO',
     isPublishAuthorized: false,
     lastTestAt: '2026-10-27T03:51:00Z',
-    lastTestStatus: 'SUCCESS',
+    lastTestStatus: 'PENDING',
     messageTemplate: 'onboarding_bot_lead',
   },
   {
@@ -55,10 +55,10 @@ export const INITIAL_CHANNELS: ChannelConfig[] = [
     targetId: 'FPlfvOSisEIDPXXQbyLrsG',
     directUrl: 'https://chat.whatsapp.com/FPlfvOSisEIDPXXQbyLrsG',
     type: 'whatsapp',
-    status: 'HOMOLOGADO_TESTE',
+    status: 'DESCONECTADO',
     isPublishAuthorized: false, // Must be explicitly toggled after tests!
     lastTestAt: '2026-10-27T03:52:00Z',
-    lastTestStatus: 'SUCCESS',
+    lastTestStatus: 'PENDING',
     messageTemplate: 'whatsapp_compact_bold',
   },
   {
@@ -68,9 +68,9 @@ export const INITIAL_CHANNELS: ChannelConfig[] = [
     directUrl: 'https://instagram.com/boxdogarimpo',
     type: 'instagram',
     status: 'DESCONECTADO',
-    isPublishAuthorized: true,
+    isPublishAuthorized: false,
     lastTestAt: '2026-10-27T03:53:00Z',
-    lastTestStatus: 'SUCCESS',
+    lastTestStatus: 'PENDING',
     messageTemplate: 'instagram_reels_bio',
   },
   {
@@ -292,7 +292,7 @@ export const INITIAL_OFFERS: OfferItem[] = [
     thumbnail: 'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=400&auto=format&fit=crop&q=80',
     opportunityScore: 88,
     stableHash: generateStableHash('MLB481920394', 'Kit Parafusadeira e Furadeira de Impacto Bosch 12V', 'Bosch Ferramentas'),
-    status: 'APROVADO_PUBLICACAO',
+    status: 'PRODUTO_VALIDADO',
     discoveredAt: '2026-10-26T17:45:00Z',
     validatedAt: '2026-10-26T17:46:00Z',
     approvedAt: '2026-10-26T17:50:00Z',
