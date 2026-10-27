@@ -1,0 +1,8 @@
+{
+  "name": "Remix Box do Garimpo",
+  "description": "Automated system to find, validate, and publish profitable affiliate deals across messaging channels with real-time price monitoring.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
