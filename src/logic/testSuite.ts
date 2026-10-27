@@ -123,8 +123,8 @@ export async function runSingleMandatoryTest(
           };
         }
         return {
-          status: 'PASSED',
-          details: `Cobertura validada: ${enabledCategories.length} categorias ativas (${enabledCategories.map((c) => c.name).join(', ')}). Busca dinâmica operacional.`,
+          status: 'PENDING',
+          details: `${enabledCategories.length} categorias habilitadas na configuração (${enabledCategories.map((c) => c.name).join(', ')}). Isso não comprova que as consultas reais por categoria estão implementadas ou acessíveis; validar integração de coleta.`,
         };
       }
 
