@@ -2,7 +2,7 @@ import { MandatoryTestItem, SystemConfig, OfferItem, ChannelConfig } from './typ
 import { generateStableHash } from './hash';
 import { calculateDiscount, generateAuthorizedAffiliateUrl, validateAffiliateUrl } from './validation';
 import { evaluateDeduplication, recordPriceHistory } from './deduplication';
-import { generateIdempotentSheetCreationPayload, SHEET_TAB_DEFINITIONS } from './sheetSchema';
+import { generateIdempotentSheetCreationPayload } from './sheetSchema';
 import { transitionOfferStatus } from './stateMachine';
 
 export const INITIAL_MANDATORY_TESTS: MandatoryTestItem[] = [
@@ -153,10 +153,18 @@ export async function runSingleMandatoryTest(
           'https://www.mercadolivre.com.br/sec/teste?matt_word=boxdogarimpo',
           config.affiliateTag
         );
-        if (!generated.isValid && !generated.affiliateUrl && !rawUrlAccepted && !fabricatedUrlAccepted) {
-          return { status: 'PASSED', details: 'Fail-closed aprovado: nenhuma URL de afiliado é fabricada nem aceita sem URL oficial independente. Integração oficial ainda não implementada; ofertas ficam bloqueadas.' };
+        const sample = sampleOffers[0];
+        const transition = sample
+          ? transitionOfferStatus(
+              { ...sample, status: 'PRODUTO_VALIDADO', affiliateUrl: '', isAffiliateValid: false, affiliateVerificationStatus: 'UNVERIFIED' },
+              'AFILIADO_CONFIRMADO',
+              { systemConfig: config }
+            )
+          : null;
+        if (!generated.isValid && !generated.affiliateUrl && !rawUrlAccepted && !fabricatedUrlAccepted && transition && !transition.success) {
+          return { status: 'PASSED', details: 'Fail-closed aprovado: não fabrica nem aceita URL sem prova oficial e a máquina de estados bloqueia a transição para AFILIADO_CONFIRMADO. Integração oficial ainda pendente.' };
         }
-        return { status: 'FAILED', details: 'Falha crítica: o sistema aceitou ou fabricou URL sem confirmação oficial.' };
+        return { status: 'FAILED', details: 'Falha crítica: URL não comprovada aceita ou transição para afiliado confirmada liberada.' };
       }
 
       case 5: {
