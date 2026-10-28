@@ -1,0 +1,63 @@
+name: O Garimpo - Motor de Coleta e Validação
+
+on:
+  workflow_dispatch:
+  push:
+    branches: ["main"]
+    paths:
+      - "collector.py"
+      - ".github/workflows/collector.yml"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: garimpo-collector
+  cancel-in-progress: false
+
+jobs:
+  collect:
+    name: Coleta controlada
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install requests google-api-python-client google-auth
+
+      - name: Validate required secrets are present
+        env:
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          GCP_SA_CREDENTIALS: ${{ secrets.GCP_SA_CREDENTIALS }}
+          MELI_APP_ID: ${{ secrets.MELI_APP_ID }}
+          MELI_SECRET_KEY: ${{ secrets.MELI_SECRET_KEY }}
+          MELI_REFRESH_TOKEN: ${{ secrets.MELI_REFRESH_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os, sys
+          names = ["SPREADSHEET_ID", "GCP_SA_CREDENTIALS", "MELI_APP_ID", "MELI_SECRET_KEY", "MELI_REFRESH_TOKEN"]
+          missing = [name for name in names if not os.environ.get(name, "").strip()]
+          if missing:
+              print("Secrets ausentes: " + ", ".join(missing))
+              sys.exit(1)
+          print("Todos os secrets obrigatórios estão configurados; valores não exibidos.")
+          PY
+
+      - name: Run collector
+        env:
+          SPREADSHEET_ID: ${{ secrets.SPREADSHEET_ID }}
+          GCP_SA_CREDENTIALS: ${{ secrets.GCP_SA_CREDENTIALS }}
+          MELI_APP_ID: ${{ secrets.MELI_APP_ID }}
+          MELI_SECRET_KEY: ${{ secrets.MELI_SECRET_KEY }}
+          MELI_REFRESH_TOKEN: ${{ secrets.MELI_REFRESH_TOKEN }}
+        run: python collector.py
