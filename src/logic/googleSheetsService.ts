@@ -382,6 +382,55 @@ export async function syncAllDataToGoogleSheets(
     values: [logHeader, ...logRows],
   });
 
+  // 5. HISTORICO: append only new price observations, without overwriting prior history.
+  const existingHistoryRows = await readSheetValues(accessToken, spreadsheetId, 'HISTORICO!A2:H');
+  const existingHistoryKeys = new Set(
+    existingHistoryRows.map((row) =>
+      `${String(row[1] || '').trim()}|${Number(row[2])}|${String(row[6] || '').trim()}`
+    )
+  );
+  const newHistoryRows: Array<Array<string | number>> = [];
+  for (const offer of offers) {
+    for (const entry of offer.history || []) {
+      const timestamp = String(entry.timestamp || '').trim();
+      const key = `${offer.mlbId.trim()}|${Number(entry.price)}|${timestamp}`;
+      if (!timestamp || !Number.isFinite(entry.price) || entry.price <= 0 || existingHistoryKeys.has(key)) {
+        continue;
+      }
+      existingHistoryKeys.add(key);
+      const eventId = `HIST_${offer.mlbId}_${timestamp}`;
+      const observations = [entry.source, entry.notes].filter(Boolean).join(' | ');
+      newHistoryRows.push([
+        eventId,
+        offer.mlbId,
+        entry.price,
+        '',
+        '',
+        'COLETA_PRECO',
+        timestamp,
+        observations,
+      ]);
+    }
+  }
+
+  if (newHistoryRows.length > 0) {
+    const historyUrl = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent('HISTORICO!A:H')}:append?valueInputOption=USER_ENTERED&insertDataOption=INSERT_ROWS`;
+    const historyResponse = await fetch(historyUrl, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ values: newHistoryRows }),
+    });
+    if (!historyResponse.ok) {
+      const errorData = await historyResponse.json().catch(() => ({}));
+      throw new Error(
+        errorData?.error?.message || `Erro ao acrescentar histórico de preços: HTTP ${historyResponse.status}`
+      );
+    }
+  }
+
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values:batchUpdate`;
   const response = await fetch(url, {
     method: 'POST',
@@ -403,8 +452,8 @@ export async function syncAllDataToGoogleSheets(
   }
 
   return {
-    updatedTabs: ['CONFIG', 'OFERTAS', 'CANAIS', 'LOGS'],
-    totalRecords: offers.length + channels.length + logs.length + configRows.length - 4,
+    updatedTabs: ['CONFIG', 'OFERTAS', 'HISTORICO', 'CANAIS', 'LOGS'],
+    totalRecords: offers.length + channels.length + logs.length + configRows.length - 4 + newHistoryRows.length,
   };
 }
 
