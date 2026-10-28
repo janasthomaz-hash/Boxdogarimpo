@@ -214,7 +214,7 @@ export async function runSingleMandatoryTest(
       }
 
       case 7: {
-        // Planilha: 5 Abas e Página1
+        // A geração local do payload não prova que a planilha real foi lida ou alterada.
         const idempotentPayload = generateIdempotentSheetCreationPayload(['Página1', 'CONFIG']);
         if (
           idempotentPayload.missingTabs.includes('OFERTAS') &&
@@ -222,11 +222,11 @@ export async function runSingleMandatoryTest(
           !idempotentPayload.missingTabs.includes('CONFIG')
         ) {
           return {
-            status: 'PASSED',
-            details: `Idempotência comprovada: identificou que CONFIG e Página1 já existem e gerou addSheet APENAS para as 4 abas faltantes, evitando erro 400 no Make Módulo 32.`,
+            status: 'PENDING',
+            details: 'Validação local do payload idempotente concluída, mas a integração real com Google Sheets não foi exercitada. Confirmar leitura dos metadados, criação apenas das abas ausentes e preservação de Página1 em uma planilha de teste antes de aprovar.',
           };
         }
-        return { status: 'FAILED', details: 'Validação de abas tentou criar abas duplicadas.' };
+        return { status: 'FAILED', details: 'A validação local gerou um payload inconsistente; a integração real também permanece não homologada.' };
       }
 
       case 8: {
