@@ -2,11 +2,6 @@ name: O Garimpo - Motor de Coleta e Validação
 
 on:
   workflow_dispatch:
-  push:
-    branches: ["main"]
-    paths:
-      - "collector.py"
-      - ".github/workflows/collector.yml"
 
 permissions:
   contents: read
