@@ -127,13 +127,21 @@ def save_products(service, spreadsheet_id: str, products: list[dict[str,Any]]) -
         if item_id in existing:
             row_num, old = existing[item_id]
             old_price = old[4] if len(old)>4 else ""
-            if str(old_price) != str(price):
+            price_changed = str(old_price) != str(price)
+            # Preserve manually validated metadata. If price changes, force revalidation
+            # but keep the affiliate URL for later re-check instead of silently deleting it.
+            for idx in (7, 8, 10, 11, 13):
+                if len(old) > idx and old[idx] not in (None, ""):
+                    row[idx] = old[idx]
+            if len(old) > 9 and old[9]:
+                row[9] = "COLETADO_PENDENTE_VALIDACAO" if price_changed else old[9]
+            if price_changed:
                 variation = ""
                 try:
                     old_num,new_num=float(old_price),float(price)
                     if old_num: variation=round((new_num-old_num)/old_num*100,2)
                 except (TypeError,ValueError): pass
-                history.append([f"HIST_{uuid.uuid4().hex[:10].upper()}",item_id,price,old_price,variation,"ALTERACAO_PRECO",stamp,"Preço alterado; oferta continua pendente de validação."])
+                history.append([f"HIST_{uuid.uuid4().hex[:10].upper()}",item_id,price,old_price,variation,"ALTERACAO_PRECO",stamp,"Preço alterado; oferta marcada para nova validação."])
             updates.append((row_num,row))
         else:
             new_rows.append(row)
