@@ -1301,23 +1301,12 @@ export const SpreadsheetManagerView: React.FC<SpreadsheetManagerViewProps> = ({
                 Cancelar
               </button>
               <button
-                onClick={() => {
-                  if (preWriteCheck.canWrite) {
-                    onShowNotification(
-                      `Operação autorizada e gravada com sucesso na aba ${activeSheetTab}!`,
-                      'success'
-                    );
-                    setShowNewRowModal(false);
-                  }
-                }}
-                disabled={!preWriteCheck.canWrite}
-                className={`px-4 py-2 rounded-xl text-xs font-bold transition-all ${
-                  preWriteCheck.canWrite
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-lg shadow-emerald-600/30'
-                    : 'bg-slate-800 text-slate-600 cursor-not-allowed border border-slate-700'
-                }`}
+                type="button"
+                disabled
+                title="A gravação individual ainda não está conectada à API do Google Sheets."
+                className="px-4 py-2 rounded-xl text-xs font-bold bg-slate-800 text-slate-500 cursor-not-allowed border border-slate-700"
               >
-                Confirmar Gravação
+                Gravação individual indisponível
               </button>
             </div>
           </div>
